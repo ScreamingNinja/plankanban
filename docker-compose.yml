@@ -1,0 +1,64 @@
+# https://planka.app/
+
+services:
+  planka:
+    image: ghcr.io/plankanban/planka:latest
+    container_name: planka
+    command: ./start.sh
+    restart: unless-stopped
+    volumes:
+      - user-avatars:/app/public/user-avatars
+      - project-background-images:/app/public/project-background-images
+      - attachments:/app/private/attachments
+
+    networks:
+      - traefik
+      - planka
+
+    env_file:
+      - stack.env
+
+    environment:
+      - BASE_URL=https://${HOST}
+      - TRUST_PROXY=0
+      - DATABASE_URL=postgresql://postgres@postgres/planka
+      - NODE_ENV=production
+
+    labels:
+      traefik.enable: true
+      traefik.http.routers.planka.entrypoints: https
+      traefik.http.routers.planka.rule: Host(`${HOST}`)
+
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: planka-postgres
+    restart: unless-stopped
+    volumes:
+      - planka-db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=planka
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    networks:
+      - planka
+
+volumes:
+  user-avatars:
+    name: planka-user-avatars
+    external: true
+  project-background-images:
+    name: planka-project-background-images
+    external: true
+  attachments:
+    name: planka-attachments
+    external: true
+  planka-db:
+    external: true
+
+networks:
+  traefik:
+    external: true
+  planka:
+    external: false
